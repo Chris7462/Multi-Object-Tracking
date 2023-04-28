@@ -1,0 +1,6 @@
+/kitti_publisher_node:
+  ros__parameters:
+    data_path: "/data/Kitti/tracking/training"
+    sequence: "0020"
+    camera_folder: "image_02"
+    lidar_folder: "velodyne"
