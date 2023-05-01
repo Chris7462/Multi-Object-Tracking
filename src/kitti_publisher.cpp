@@ -40,16 +40,17 @@ KittiPublisher::KittiPublisher()
   const std::filesystem::path label_file {data_path/label_folder/(sequence+".txt")};
   load_label_data(label_file);
 
-  publisher_ = create_publisher<std_msgs::msg::String>("kitti_data", 10);
+  publisher_ = create_publisher<tracking_msgs::msg::DetectedObjectList>("kitti_data", 10);
   timer_ = create_wall_timer(std::chrono::milliseconds(100),
     std::bind(&KittiPublisher::timer_callback, this));
 }
 
 void KittiPublisher::timer_callback()
 {
-  auto message = std_msgs::msg::String();
-  message.data = "Hello, world!";
-  RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
+  auto message = tracking_msgs::msg::DetectedObjectList();
+  message.header.frame_id = "map";
+  message.header.stamp = get_clock()->now();
+  RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.header.frame_id.c_str());
   publisher_->publish(message);
 }
 

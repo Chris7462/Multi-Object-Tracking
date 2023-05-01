@@ -12,6 +12,7 @@ find_package(ament_cmake REQUIRED)
 # find_package(<dependency> REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(tracking_msgs REQUIRED)
 
 add_executable(kitti_publisher_node
   src/kitti_publisher_node.cpp
@@ -20,7 +21,7 @@ add_executable(kitti_publisher_node
 
 ament_target_dependencies(kitti_publisher_node
   rclcpp
-  std_msgs
+  tracking_msgs
 )
 
 target_include_directories(kitti_publisher_node PUBLIC

@@ -3,8 +3,11 @@
 #include <vector>
 
 #include <rclcpp/rclcpp.hpp>
-#include <std_msgs/msg/string.hpp>
 
+// local ros msg
+#include "tracking_msgs/msg/detected_object_list.hpp"
+
+// local header
 #include "multi_object_tracking/helper.hpp"
 
 class KittiPublisher: public rclcpp::Node
@@ -16,7 +19,7 @@ class KittiPublisher: public rclcpp::Node
   private:
     void timer_callback();
     rclcpp::TimerBase::SharedPtr timer_;
-    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
+    rclcpp::Publisher<tracking_msgs::msg::DetectedObjectList>::SharedPtr publisher_;
 
     std::vector<std::filesystem::path> camera_filenames_;
     std::vector<std::filesystem::path> lidar_filenames_;
