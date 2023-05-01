@@ -2,5 +2,8 @@
   ros__parameters:
     data_path: "/data/Kitti/tracking/training"
     sequence: "0020"
+    max_frame: 837
     camera_folder: "image_02"
     lidar_folder: "velodyne"
+    gps_folder: "oxts"
+    label_folder: "label_02"
