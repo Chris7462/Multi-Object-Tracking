@@ -88,7 +88,7 @@ void KittiPublisher::find_camera_data_file(const std::filesystem::path& camera_p
     if (camera_files_.size() != max_frame_) {
       RCLCPP_ERROR(get_logger(), "Camera file size (%ld) does not match the max frame size (%ld).",
         camera_files_.size(), max_frame_);
-      std::abort();
+      rclcpp::shutdown();
     } else {
       std::sort(camera_files_.begin(), camera_files_.end(),
         [](const auto& lhs, const auto& rhs){
@@ -97,7 +97,7 @@ void KittiPublisher::find_camera_data_file(const std::filesystem::path& camera_p
     }
   } else {
     RCLCPP_ERROR(get_logger(), "Fild camera data files failed. Please check your path setting");
-    std::abort();
+    rclcpp::shutdown();
   }
 }
 
@@ -113,7 +113,7 @@ void KittiPublisher::find_lidar_data_file(const std::filesystem::path& lidar_pat
     if (lidar_files_.size() != max_frame_) {
       RCLCPP_ERROR(get_logger(), "LiDAR file size (%ld) does not match the max frame size (%ld).",
         lidar_files_.size(), max_frame_);
-      std::abort();
+      rclcpp::shutdown();
     } else {
       std::sort(lidar_files_.begin(), lidar_files_.end(),
         [](const auto& lhs, const auto& rhs){
@@ -122,7 +122,7 @@ void KittiPublisher::find_lidar_data_file(const std::filesystem::path& lidar_pat
     }
   } else {
     RCLCPP_ERROR(get_logger(), "Fild LiDAR data files failed. Please check your path setting");
-    std::abort();
+    rclcpp::shutdown();
   }
 }
 
@@ -180,11 +180,16 @@ void KittiPublisher::load_label_data(const std::filesystem::path& label_file)
 void KittiPublisher::publish_camera_data()
 {
   cv::Mat rgb_image = cv::imread(camera_files_.at(frame_));
-  std_msgs::msg::Header hdr;
-  hdr.frame_id = "map";
-  hdr.stamp = timestamp_;
-  sensor_msgs::msg::Image::SharedPtr img_msg = cv_bridge::CvImage(hdr, "bgr8", rgb_image).toImageMsg();
-  img_publisher_->publish(img_msg);
+  if (rgb_image.empty()) {
+    RCLCPP_ERROR(get_logger(), "Image does not exist. Check your file path!");
+    rclcpp::shutdown();
+  } else {
+    std_msgs::msg::Header hdr;
+    hdr.frame_id = "map";
+    hdr.stamp = timestamp_;
+    sensor_msgs::msg::Image::SharedPtr img_msg = cv_bridge::CvImage(hdr, "bgr8", rgb_image).toImageMsg();
+    img_publisher_->publish(img_msg);
+  }
 }
 
 void KittiPublisher::publish_lidar_data()
