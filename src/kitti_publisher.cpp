@@ -5,7 +5,7 @@
 
 
 KittiPublisher::KittiPublisher()
-  : Node("kitti_publisher_node")
+  : Node("kitti_publisher_node"), frame_(0)
 {
   declare_parameter("data_path", "");
   std::filesystem::path data_path {get_parameter("data_path").as_string()};
@@ -41,34 +41,30 @@ KittiPublisher::KittiPublisher()
   load_label_data(label_file);
 
   publisher_ = create_publisher<tracking_msgs::msg::DetectedObjectList>("kitti_data", 10);
-  timer_ = create_wall_timer(std::chrono::milliseconds(100),
-    std::bind(&KittiPublisher::timer_callback, this));
 }
 
-void KittiPublisher::timer_callback()
+void KittiPublisher::run()
 {
-  auto message = tracking_msgs::msg::DetectedObjectList();
-  message.header.frame_id = "map";
-  message.header.stamp = get_clock()->now();
-  RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.header.frame_id.c_str());
-  publisher_->publish(message);
+  publish_detected_object_list();
+  ++frame_;
 }
 
 void KittiPublisher::find_camera_data_file(const std::filesystem::path& camera_path)
 {
-  camera_filenames_.clear();
+  camera_files_.clear();
   if (std::filesystem::exists(camera_path)) {
     for (const auto& entry: std::filesystem::directory_iterator(camera_path)) {
       if (entry.is_regular_file()) {
-        camera_filenames_.push_back(entry.path().filename());
+        //camera_files_.push_back(entry.path().filename());
+        camera_files_.push_back(entry.path());
       }
     }
-    if (camera_filenames_.size() != max_frame_) {
+    if (camera_files_.size() != max_frame_) {
       RCLCPP_ERROR(get_logger(), "Camera file size (%ld) does not match the max frame size (%ld).",
-        camera_filenames_.size(), max_frame_);
+        camera_files_.size(), max_frame_);
       std::abort();
     } else {
-      std::sort(camera_filenames_.begin(), camera_filenames_.end(),
+      std::sort(camera_files_.begin(), camera_files_.end(),
         [](const auto& lhs, const auto& rhs){
           return lhs.string() < rhs.string();
         });
@@ -81,19 +77,20 @@ void KittiPublisher::find_camera_data_file(const std::filesystem::path& camera_p
 
 void KittiPublisher::find_lidar_data_file(const std::filesystem::path& lidar_path)
 {
-  lidar_filenames_.clear();
+  lidar_files_.clear();
   if (std::filesystem::exists(lidar_path)) {
     for (const auto& entry: std::filesystem::directory_iterator(lidar_path)) {
       if (entry.is_regular_file()) {
-        lidar_filenames_.push_back(entry.path().filename());
+        //lidar_files_.push_back(entry.path().filename());
+        lidar_files_.push_back(entry.path());
       }
     }
-    if (lidar_filenames_.size() != max_frame_) {
+    if (lidar_files_.size() != max_frame_) {
       RCLCPP_ERROR(get_logger(), "LiDAR file size (%ld) does not match the max frame size (%ld).",
-        lidar_filenames_.size(), max_frame_);
+        lidar_files_.size(), max_frame_);
       std::abort();
     } else {
-      std::sort(lidar_filenames_.begin(), lidar_filenames_.end(),
+      std::sort(lidar_files_.begin(), lidar_files_.end(),
         [](const auto& lhs, const auto& rhs){
           return lhs.string() < rhs.string();
         });
@@ -132,35 +129,52 @@ void KittiPublisher::load_label_data(const std::filesystem::path& label_file)
 
   std::ifstream inf {label_file};
   if (!inf) {
-    std::cout << "Load label data failed. Please check your path setting" << std::endl;
+    RCLCPP_ERROR(get_logger(), "Load label data failed. Please check your path setting");
   } else {
     std::string line;
     while (std::getline(inf, line)) {
       LABEL obj;
       int frame;
       int track_id;
-      std::string type_str;
       std::istringstream iss(line);
-      iss >> frame >> track_id >> type_str >> obj.truncation >> obj.occlusion
+      iss >> frame >> track_id >> obj.label >> obj.truncation >> obj.occlusion
           >> obj.alpha >> obj.left >> obj.top >> obj.right >> obj.bottom
           >> obj.height >> obj.width >> obj.length >> obj.x >> obj.y
           >> obj.z >> obj.rotation_y;
 
-      // convert the string to enum class
-      auto it = table.find(type_str);
-      if (it != table.end()) {
-        obj.label = it->second;
-      } else {
-        RCLCPP_ERROR(get_logger(), "Something is wrong with the label type");
-        std::abort();
-      }
-
       // skip for largely truncated, largely occluded, or not Car type object
-      if (obj.truncation > maxTruncation || obj.occlusion > maxOcclusion || obj.label != LabelType::Car) {
+      if (obj.truncation > maxTruncation || obj.occlusion > maxOcclusion || obj.label != "Car") {
         continue;
       } else {
-        label_data_[frame].push_back(obj);
+        label_data_.at(frame).push_back(obj);
       }
     }
   }
+}
+
+void KittiPublisher::publish_detected_object_list()
+{
+  tracking_msgs::msg::DetectedObjectList obj_list_msg = tracking_msgs::msg::DetectedObjectList();
+  obj_list_msg.header.frame_id = "map";
+  obj_list_msg.header.stamp = get_clock()->now();
+
+  for (auto& obj: label_data_.at(frame_)) {
+    auto obj_msg = tracking_msgs::msg::DetectedObject();
+    obj_msg.label = obj.label;
+    obj_msg.left = obj.left;
+    obj_msg.top = obj.top;
+    obj_msg.right = obj.right;
+    obj_msg.bottom = obj.bottom;
+    obj_msg.height = obj.height;
+    obj_msg.width = obj.width;
+    obj_msg.length = obj.length;
+    obj_msg.x = obj.x;
+    obj_msg.y = obj.y;
+    obj_msg.z = obj.z;
+    obj_msg.yaw = obj.rotation_y;
+
+    obj_list_msg.data.push_back(obj_msg);
+  }
+  //RCLCPP_INFO(this->get_logger(), "Publishing: frame %ld data", frame_);
+  publisher_->publish(obj_list_msg);
 }

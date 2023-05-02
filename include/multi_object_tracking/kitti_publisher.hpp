@@ -16,19 +16,23 @@ class KittiPublisher: public rclcpp::Node
     KittiPublisher();
     ~KittiPublisher() = default;
 
+    void run();
+
+    size_t frame_;
+    size_t max_frame_;
+
   private:
-    void timer_callback();
-    rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<tracking_msgs::msg::DetectedObjectList>::SharedPtr publisher_;
 
-    std::vector<std::filesystem::path> camera_filenames_;
-    std::vector<std::filesystem::path> lidar_filenames_;
+    std::vector<std::filesystem::path> camera_files_;
+    std::vector<std::filesystem::path> lidar_files_;
     std::vector<GPSIMU> gps_data_;
     std::vector<std::vector<LABEL>> label_data_;
 
-    size_t max_frame_;
     void find_camera_data_file(const std::filesystem::path& camera_path);
     void find_lidar_data_file(const std::filesystem::path& lidar_path);
     void load_gps_data(const std::filesystem::path& gps_file);
     void load_label_data(const std::filesystem::path& label_file);
+
+    void publish_detected_object_list();
 };

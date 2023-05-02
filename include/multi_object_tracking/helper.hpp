@@ -1,7 +1,6 @@
 #pragma once
 #include <cstdint>
 #include <string>
-#include <unordered_map>
 
 constexpr int maxTruncation {0};
 constexpr int maxOcclusion {2};
@@ -40,41 +39,9 @@ struct GPSIMU
   int orimode; // orientation mode of primary GPS receiver
 };
 
-enum class LabelType
-{
-  Car,  // 0
-  Van,  // 1
-  Truck,  // 2
-  Pedestrian, // 3
-  Person_sitting, // 4
-  Cyclist,  // 5
-  Tram, // 6
-  Misc, // 7
-  DontCare, // 8
-  maxLabelType
-};
-
-static std::unordered_map<std::string, LabelType> const table = {
-  {"Car", LabelType::Car},
-  {"Van", LabelType::Van},
-  {"Truck", LabelType::Truck},
-  {"Pedestrian", LabelType::Pedestrian},
-  {"Person_sitting", LabelType::Person_sitting},
-  {"Cyclist", LabelType::Cyclist},
-  {"Tram", LabelType::Tram},
-  {"Misc", LabelType::Misc},
-  {"DontCare", LabelType::DontCare}
-};
-
-// Overload the unary + operator to convert LabelType to the underlying type
-constexpr auto operator+(LabelType label) noexcept
-{
-  return static_cast<std::underlying_type_t<LabelType>>(label);
-}
-
 struct LABEL
 {
-  LabelType label; //  Describes the type of object
+  std::string label; //  Describes the type of object
   int truncation; // (0,1,2) indicating the level of truncation.
   int occlusion; // Indicating occlusion state: 0 = fully visible,
                  // 1 = partly occluded, 2 = largely occluded, 3 = unknown
