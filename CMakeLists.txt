@@ -11,8 +11,16 @@ find_package(ament_cmake REQUIRED)
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(image_transport REQUIRED)
+find_package(pcl_conversions REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+
 find_package(tracking_msgs REQUIRED)
+
+find_package(OpenCV REQUIRED COMPONENTS highgui)
+find_package(PCL REQUIRED)
 
 add_executable(kitti_publisher_node
   src/kitti_publisher_node.cpp
@@ -21,12 +29,28 @@ add_executable(kitti_publisher_node
 
 ament_target_dependencies(kitti_publisher_node
   rclcpp
+  cv_bridge
+  image_transport
+  pcl_conversions
+  sensor_msgs
+  std_msgs
   tracking_msgs
 )
 
 target_include_directories(kitti_publisher_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
+  $<INSTALL_INTERFACE:include>
+  ${OpenCV_INCLUDE_DIRS}
+  ${PCL_INCLUDE_DIRS})
+
+add_definitions(${PCL_DEFINITIONS})
+
+link_directories(${PCL_LIBRARY_DIRS})
+
+target_link_libraries(kitti_publisher_node
+  ${Opencv_LIBS}
+  ${PCL_LIBRARIES}
+)
 
 target_compile_features(kitti_publisher_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 

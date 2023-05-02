@@ -1,6 +1,21 @@
+// C++ header
 #include <fstream>
 #include <sstream>
 
+// opencv header
+#include <opencv2/highgui.hpp>
+
+// pcl header
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+
+// ros header
+#include <cv_bridge/cv_bridge.h>
+#include <std_msgs/msg/header.hpp>
+#include <sensor_msgs/msg/image.hpp>
+#include <pcl_conversions/pcl_conversions.h>
+
+// local header
 #include "multi_object_tracking/kitti_publisher.hpp"
 
 
@@ -40,12 +55,24 @@ KittiPublisher::KittiPublisher()
   const std::filesystem::path label_file {data_path/label_folder/(sequence+".txt")};
   load_label_data(label_file);
 
-  publisher_ = create_publisher<tracking_msgs::msg::DetectedObjectList>("kitti_data", 10);
+  pc_publisher_ = create_publisher<sensor_msgs::msg::PointCloud2>("velodyne", 10);
+  detect_publisher_ = create_publisher<tracking_msgs::msg::DetectedObjectList>("detected_object_list", 10);
+}
+
+void KittiPublisher::init()
+{
+  it_ = std::make_shared<image_transport::ImageTransport>(shared_from_this());
+  img_publisher_ = std::make_shared<image_transport::Publisher>(it_->advertise("camera/image_raw", 10));
+  timestamp_ = this->get_clock()->now();
 }
 
 void KittiPublisher::run()
 {
+  timestamp_ = this->get_clock()->now();
+  publish_camera_data();
+  publish_lidar_data();
   publish_detected_object_list();
+
   ++frame_;
 }
 
@@ -55,7 +82,6 @@ void KittiPublisher::find_camera_data_file(const std::filesystem::path& camera_p
   if (std::filesystem::exists(camera_path)) {
     for (const auto& entry: std::filesystem::directory_iterator(camera_path)) {
       if (entry.is_regular_file()) {
-        //camera_files_.push_back(entry.path().filename());
         camera_files_.push_back(entry.path());
       }
     }
@@ -81,7 +107,6 @@ void KittiPublisher::find_lidar_data_file(const std::filesystem::path& lidar_pat
   if (std::filesystem::exists(lidar_path)) {
     for (const auto& entry: std::filesystem::directory_iterator(lidar_path)) {
       if (entry.is_regular_file()) {
-        //lidar_files_.push_back(entry.path().filename());
         lidar_files_.push_back(entry.path());
       }
     }
@@ -152,11 +177,42 @@ void KittiPublisher::load_label_data(const std::filesystem::path& label_file)
   }
 }
 
+void KittiPublisher::publish_camera_data()
+{
+  cv::Mat rgb_image = cv::imread(camera_files_.at(frame_));
+  std_msgs::msg::Header hdr;
+  hdr.frame_id = "map";
+  hdr.stamp = timestamp_;
+  sensor_msgs::msg::Image::SharedPtr img_msg = cv_bridge::CvImage(hdr, "bgr8", rgb_image).toImageMsg();
+  img_publisher_->publish(img_msg);
+}
+
+void KittiPublisher::publish_lidar_data()
+{
+  pcl::PointCloud<pcl::PointXYZI> cloud;
+  std::ifstream inf(lidar_files_.at(frame_), std::ios::binary);
+  if (!inf) {
+    RCLCPP_ERROR(get_logger(), "Load LiDAR data failed. Please check your path setting");
+  } else {
+    inf.seekg(0, std::ios::beg);
+    while (inf.good() && !inf.eof()) {
+      pcl::PointXYZI point;
+      inf.read(reinterpret_cast<char*>(&point), sizeof(point));
+      cloud.points.push_back(point);
+    }
+  }
+  sensor_msgs::msg::PointCloud2 pc_msg;
+  pcl::toROSMsg(cloud, pc_msg);
+  pc_msg.header.stamp = timestamp_;
+  pc_msg.header.frame_id = "map";
+  pc_publisher_->publish(pc_msg);
+}
+
 void KittiPublisher::publish_detected_object_list()
 {
   tracking_msgs::msg::DetectedObjectList obj_list_msg = tracking_msgs::msg::DetectedObjectList();
   obj_list_msg.header.frame_id = "map";
-  obj_list_msg.header.stamp = get_clock()->now();
+  obj_list_msg.header.stamp = timestamp_;
 
   for (auto& obj: label_data_.at(frame_)) {
     auto obj_msg = tracking_msgs::msg::DetectedObject();
@@ -176,5 +232,5 @@ void KittiPublisher::publish_detected_object_list()
     obj_list_msg.data.push_back(obj_msg);
   }
   //RCLCPP_INFO(this->get_logger(), "Publishing: frame %ld data", frame_);
-  publisher_->publish(obj_list_msg);
+  detect_publisher_->publish(obj_list_msg);
 }
