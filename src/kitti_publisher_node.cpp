@@ -5,7 +5,6 @@ int main(int argc, char* argv[])
 {
   rclcpp::init(argc, argv);
   auto node = std::make_shared<KittiPublisher>();
-  node->init();
 
   rclcpp::Rate rate(10);
   while (rclcpp::ok() && node->frame() < node->max_frame()) {

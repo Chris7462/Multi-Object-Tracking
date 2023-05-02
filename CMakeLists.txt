@@ -12,7 +12,6 @@ find_package(ament_cmake REQUIRED)
 # find_package(<dependency> REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(cv_bridge REQUIRED)
-find_package(image_transport REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
@@ -30,7 +29,6 @@ add_executable(kitti_publisher_node
 ament_target_dependencies(kitti_publisher_node
   rclcpp
   cv_bridge
-  image_transport
   pcl_conversions
   sensor_msgs
   std_msgs

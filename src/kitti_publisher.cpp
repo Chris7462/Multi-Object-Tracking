@@ -12,7 +12,6 @@
 // ros header
 #include <cv_bridge/cv_bridge.h>
 #include <std_msgs/msg/header.hpp>
-#include <sensor_msgs/msg/image.hpp>
 #include <pcl_conversions/pcl_conversions.h>
 
 // local header
@@ -55,15 +54,9 @@ KittiPublisher::KittiPublisher()
   const std::filesystem::path label_file {data_path/label_folder/(sequence+".txt")};
   load_label_data(label_file);
 
+  img_publisher_ = create_publisher<sensor_msgs::msg::Image>("camera/image_raw", 10);
   pc_publisher_ = create_publisher<sensor_msgs::msg::PointCloud2>("velodyne", 10);
   detect_publisher_ = create_publisher<tracking_msgs::msg::DetectedObjectList>("detected_object_list", 10);
-}
-
-void KittiPublisher::init()
-{
-  it_ = std::make_shared<image_transport::ImageTransport>(shared_from_this());
-  img_publisher_ = std::make_shared<image_transport::Publisher>(it_->advertise("camera/image_raw", 10));
-  timestamp_ = this->get_clock()->now();
 }
 
 void KittiPublisher::run()
@@ -188,7 +181,7 @@ void KittiPublisher::publish_camera_data()
     hdr.frame_id = "map";
     hdr.stamp = timestamp_;
     sensor_msgs::msg::Image::SharedPtr img_msg = cv_bridge::CvImage(hdr, "bgr8", rgb_image).toImageMsg();
-    img_publisher_->publish(img_msg);
+    img_publisher_->publish(*img_msg);
   }
 }
 
@@ -202,7 +195,8 @@ void KittiPublisher::publish_lidar_data()
     inf.seekg(0, std::ios::beg);
     while (inf.good() && !inf.eof()) {
       pcl::PointXYZI point;
-      inf.read(reinterpret_cast<char*>(&point), sizeof(point));
+      inf.read(reinterpret_cast<char*>(&point.x), 3*sizeof(float));
+      inf.read(reinterpret_cast<char*>(&point.intensity), sizeof(float));
       cloud.points.push_back(point);
     }
   }

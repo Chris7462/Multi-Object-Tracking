@@ -4,7 +4,7 @@
 
 // ros header
 #include <rclcpp/rclcpp.hpp>
-#include <image_transport/image_transport.hpp>
+#include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
 // local header
@@ -19,14 +19,14 @@ class KittiPublisher: public rclcpp::Node
     KittiPublisher();
     ~KittiPublisher() = default;
 
-    void init();
     void run();
     inline size_t frame() {return frame_;}
     inline size_t max_frame() {return max_frame_;}
 
   private:
-    std::shared_ptr<image_transport::ImageTransport> it_;
-    std::shared_ptr<image_transport::Publisher> img_publisher_;
+  //std::shared_ptr<image_transport::ImageTransport> it_;
+  //std::shared_ptr<image_transport::Publisher> img_publisher_;
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr img_publisher_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pc_publisher_;
     rclcpp::Publisher<tracking_msgs::msg::DetectedObjectList>::SharedPtr detect_publisher_;
 
