@@ -54,7 +54,23 @@ target_link_libraries(kitti_publisher_node
 
 target_compile_features(kitti_publisher_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
-install(TARGETS kitti_publisher_node
+add_executable(multi_object_tracking_node
+  src/multi_object_tracking_node.cpp
+  src/multi_object_tracking.cpp
+)
+
+ament_target_dependencies(multi_object_tracking_node
+  rclcpp
+  tracking_msgs
+)
+
+target_include_directories(multi_object_tracking_node PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
+target_compile_features(multi_object_tracking_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+
+install(TARGETS kitti_publisher_node multi_object_tracking_node
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY params
