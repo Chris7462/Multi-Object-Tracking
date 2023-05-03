@@ -48,8 +48,9 @@ class Track
 {
   public:
     //TODO beta
-    Track(Param& p, int id, float time, Detect& det, float velocity, float angle):param_(p),id_(id){
-
+    Track(Param& p, int id, float time, Detect& det, float velocity, float angle)
+      : param_(p), id_(id)
+    {
       imm_ukf_=std::shared_ptr<IMM_UKF>(new IMM_UKF(id, param_.pmodel, param_.pstate_v, param_.pmea_v, param_.pP, param_.pQ, param_.pR, param_.pinteract));
 
       Eigen::VectorXd z(2);
@@ -68,14 +69,14 @@ class Track
       measure_ << x, y;
     };
 
-    ~Track(){};
+    ~Track() = default;
 
     int GetId()
     {
       return id_;
     }
 
-    int Prediction(float time)
+    void Prediction(float time)
     {
       age_++;
       /*if(age_> 1){
@@ -84,7 +85,7 @@ class Track
       imm_ukf_->PredictionZmerge(time);
     }
 
-    int Update(std::vector<Eigen::VectorXd>& det, const Eigen::VectorXd& beta, const float& last_beta, float& time)
+    void Update(std::vector<Eigen::VectorXd>& det, const Eigen::VectorXd& beta, const float& last_beta)
     {
       imm_ukf_->UpdateProbability(det, beta, last_beta);
       age_ = 0;
@@ -94,7 +95,7 @@ class Track
       }
     }
 
-    int Update(Eigen::VectorXd& det) {
+    void Update(Eigen::VectorXd& det) {
       imm_ukf_->UpdateProbability(det);
       age_ = 0;
       hit_ += 1;

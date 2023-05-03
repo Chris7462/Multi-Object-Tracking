@@ -3,7 +3,7 @@
 
 
 MultiObjectTracking::MultiObjectTracking()
-  : Node("multi_object_tracking")
+  : Node("multi_object_tracking"), param(), tracker(param)
 {
   detect_subscription_ = create_subscription<tracking_msgs::msg::DetectedObjectList>(
     "detected_object_list", 10, std::bind(&MultiObjectTracking::tracking_callback, this, std::placeholders::_1));

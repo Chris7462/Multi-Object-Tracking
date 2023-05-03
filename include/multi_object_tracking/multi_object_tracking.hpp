@@ -11,6 +11,7 @@
 
 // local header
 #include "multi_object_tracking/read_param.hpp"
+#include "multi_object_tracking/tracker.hpp"
 
 
 class MultiObjectTracking: public rclcpp::Node
@@ -20,6 +21,8 @@ class MultiObjectTracking: public rclcpp::Node
     ~MultiObjectTracking() = default;
 
     Param param;
+    Tracker tracker;
+
   private:
     rclcpp::Subscription<tracking_msgs::msg::DetectedObjectList>::SharedPtr detect_subscription_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr img_publisher_;

@@ -54,6 +54,20 @@ class Param
       //pinteract(2,1) = 0.15;
     };
 
+    Param(const Param& pcopy) {
+      pstate_v = pcopy.pstate_v;
+      pmea_v = pcopy.pmea_v;
+      pIou_thresh = pcopy.pIou_thresh;
+      pg_sigma = pcopy.pg_sigma;
+      pdist_thresh = pcopy.pdist_thresh;
+      pmodel = pcopy.pmodel;
+      pP = pcopy.pP;
+      pinteract = pcopy.pinteract;
+      pQ = pcopy.pQ;
+      pR = pcopy.pR;
+      pd = pcopy.pd;
+    }
+
     Param& operator=(const Param& pcopy) {
       if (this == &pcopy) {
         return *this;

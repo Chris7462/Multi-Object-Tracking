@@ -17,12 +17,12 @@ void IMM_UKF::IMM_Initialization(Eigen::VectorXd& Z, float time, float velo, flo
   x(n_z_) = velo;
   x(n_z_+1) = angle;
   //初始化状态量
-  for(int i=0; i<model_size; ++i){
+  for(size_t i=0; i<model_size; ++i){
     model_X_[i] = x;
   }
   //std::cout<<"############################## IMM initial ########################### "<<velo<<std::endl;
 
-  for(int i=0; i<model_size; ++i){
+  for(size_t i=0; i<model_size; ++i){
     imm_ukf_[i].Initialization(model_X_[i],model_P_[i], time);
   }
 }
@@ -37,7 +37,7 @@ void IMM_UKF::InputInteract()
 
   c_.fill(0.0);
   //the jth model
-  for(int j=0; j<model_size; ++j){
+  for(size_t j=0; j<model_size; ++j){
     model_X_[j] = imm_ukf_[j].Get_state();
     model_P_[j] = imm_ukf_[j].Get_covariance();
     for(int i=0; i<model_size; ++i){
@@ -45,14 +45,14 @@ void IMM_UKF::InputInteract()
     }
   }
   //std::cout<<"########## IMM InputInteract ##########"<<std::endl;
-  for(int j=0; j<model_size; ++j){
+  for(size_t j=0; j<model_size; ++j){
     X_hat_[j].fill(0.);
     P_hat_[j].fill(0.);
-    for(int i=0; i<model_size; ++i){
+    for(size_t i=0; i<model_size; ++i){
       float u =  ((interact_pro_(i,j)*model_pro_(i))/c_(j));
       X_hat_[j] += u * model_X_[i]; //problem
     }
-    for(int i=0; i<model_size; ++i){
+    for(size_t i=0; i<model_size; ++i){
       float u =  (interact_pro_(i,j)*model_pro_(i))/c_(j);
       P_hat_[j] += (u * (model_P_[i] + (model_X_[i] - X_hat_[j])*(model_X_[i] - X_hat_[j]).transpose()));
     }
@@ -73,14 +73,14 @@ void IMM_UKF::PredictionZmerge(float time)
   Zpre_merge_.fill(0.0);
   //std::cout<<"############################## IMM Prediction1 #############################"<<std::endl;
 
-  for(int i=0; i<model_size; ++i){
+  for(size_t i=0; i<model_size; ++i){
     imm_ukf_[i].PredictionZ(X_hat_[i], P_hat_[i], time);
     //TODO get zmerge
     Zpre_merge_ += (model_pro_(i) * imm_ukf_[i].Get_PredictionZ());
   }
   //std::cout<<"############################## IMM Prediction2 #############################"<<std::endl;
 
-  for(int i=0; i<model_size; ++i){
+  for(size_t i=0; i<model_size; ++i){
     Eigen::MatrixXd S = imm_ukf_[i].Get_S();
     Eigen::VectorXd Zp = imm_ukf_[i].Get_PredictionZ();
     S_merge_ += ( model_pro_(i) * (S + (Zp - Zpre_merge_)*(Zp - Zpre_merge_).transpose()));
@@ -97,7 +97,7 @@ void IMM_UKF::UpdateProbability(std::vector<Eigen::VectorXd>& Z, const Eigen::Ve
 
   std::vector<float> model_ita(model_size);
 
-  for(int i=0; i<model_size; ++i){
+  for(size_t i=0; i<model_size; ++i){
 
     imm_ukf_[i].Update(Z, beta, last_beta);
 
@@ -109,15 +109,14 @@ void IMM_UKF::UpdateProbability(std::vector<Eigen::VectorXd>& Z, const Eigen::Ve
   }
 
   float c_temp = 0;
-  for(int i=0; i<model_size; ++i){
+  for(size_t i=0; i<model_size; ++i){
     c_temp += model_ita[i] * c_(i);
   }
 
-  for(int i=0; i<model_size; ++i){
+  for(size_t i=0; i<model_size; ++i){
     model_pro_(i) = (model_ita[i]*c_(i))/c_temp;
     if(model_pro_(i)<1e-4) model_pro_(i) = 1e-4;
   }
-
 
   filewrite<<Z[0](0)<<" "<<Z[0](1)<<" ";
   MixProbability();
@@ -132,7 +131,7 @@ void IMM_UKF::UpdateProbability(Eigen::VectorXd& Z)
 
   std::vector<float> model_ita(model_size);
   std::cout<<model_size<<std::endl;
-  for(int i=0; i<model_size; ++i){
+  for(size_t i=0; i<model_size; ++i){
 
     imm_ukf_[i].Update(Z);
 
@@ -144,11 +143,11 @@ void IMM_UKF::UpdateProbability(Eigen::VectorXd& Z)
   }
 
   float c_temp = 0;
-  for(int i=0; i<model_size; ++i){
+  for(size_t i=0; i<model_size; ++i){
     c_temp += model_ita[i] * c_(i);
   }
 
-  for(int i=0; i<model_size; ++i){
+  for(size_t i=0; i<model_size; ++i){
     model_pro_(i) = (model_ita[i]*c_(i))/c_temp;
     if(model_pro_(i)<1e-4) model_pro_(i) = 1e-4;
   }
@@ -165,7 +164,7 @@ void IMM_UKF::MixProbability()
   //std::cout<<"########## IMM MixProbability #########"<<std::endl;
   x_merge_.fill(0.0);
   p_merge_.fill(0.0);
-  for(int i=0; i<model_size; ++i){
+  for(size_t i=0; i<model_size; ++i){
     model_X_[i] = imm_ukf_[i].Get_state();
     model_P_[i] = imm_ukf_[i].Get_covariance();
     //std::cout<<" model_X_ \n"<<model_X_[i]<<"\n"<<std::endl;
@@ -173,7 +172,7 @@ void IMM_UKF::MixProbability()
   }
 
   //std::cout<<"########## final merge X ##########\n"<< x_merge_<<std::endl;
-  for(int i=0; i<model_size; ++i){
+  for(size_t i=0; i<model_size; ++i){
     p_merge_ += model_pro_(i) * (model_P_[i] + (model_X_[i] -x_merge_)* (model_X_[i] -x_merge_).transpose());
   }
   filewrite<<track_id_<<" "<<x_merge_(0)<<" "<<x_merge_(1)<<" "<<x_merge_(2)<<" "<<x_merge_(3)<<" "<<model_pro_(0)<<" "<<model_pro_(1)<<" "<<model_pro_(2)<<"\n";

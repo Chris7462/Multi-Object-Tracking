@@ -21,7 +21,7 @@ class IMM_UKF
         if (model.size()==0) {
           throw "valid input !";
         } else {
-          for (int i = 0; i < model.size(); ++i) {
+          for (size_t i = 0; i < model.size(); ++i) {
             //UKF ukf(model[i], state_v, mea_v, Q[i], R[i],P,i);
             imm_ukf_.emplace_back(model[i], state_v, mea_v, Q[i], R[i],P);
             //std::cout<<"model ukf "<<model[i]<<std::endl;
@@ -46,12 +46,12 @@ class IMM_UKF
           model_X_.resize(model_size);
           model_P_.resize(model_size);
 
-          for (int i = 0; i < model.size(); ++i) {
+          for (size_t i = 0; i < model.size(); ++i) {
             model_P_[i] = (P);
           }
           X_hat_.resize(model_size);
           P_hat_.resize(model_size);
-          for (int i = 0; i < model.size(); ++i) {
+          for (size_t i = 0; i < model.size(); ++i) {
             X_hat_[i] = Eigen::VectorXd(n_x_);
             P_hat_[i] = Eigen::MatrixXd(n_x_,n_x_);
             X_hat_[i].fill(0.0);

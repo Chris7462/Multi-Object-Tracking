@@ -50,7 +50,7 @@ add_definitions(${PCL_DEFINITIONS})
 link_directories(${PCL_LIBRARY_DIRS})
 
 target_link_libraries(kitti_publisher_node
-  ${Opencv_LIBS}
+  ${OpenCV_LIBS}
   ${PCL_LIBRARIES}
 )
 
@@ -71,7 +71,11 @@ ament_target_dependencies(multi_object_tracking_node
 target_include_directories(multi_object_tracking_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
-  ${EIGEN3_INCLUDE_DIR})
+  ${EIGEN3_INCLUDE_DIR}
+  ${OpenCV_INCLUDE_DIRS})
+
+target_link_libraries(multi_object_tracking_node
+  ${OpenCV_LIBS})
 
 target_compile_features(multi_object_tracking_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
