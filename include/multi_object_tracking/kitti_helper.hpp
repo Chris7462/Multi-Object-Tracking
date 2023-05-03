@@ -5,7 +5,7 @@
 constexpr int maxTruncation {0};
 constexpr int maxOcclusion {2};
 
-struct GPSIMU
+struct OXTS
 {
   double lat; // latitude of the oxts-unit (deg)
   double lon; // longitude of the oxts-unit (deg)

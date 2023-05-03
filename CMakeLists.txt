@@ -15,6 +15,7 @@ find_package(cv_bridge REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(tf2 REQUIRED)
 
 find_package(tracking_msgs REQUIRED)
 
@@ -33,6 +34,7 @@ ament_target_dependencies(kitti_publisher_node
   sensor_msgs
   std_msgs
   tracking_msgs
+  tf2
 )
 
 target_include_directories(kitti_publisher_node PUBLIC

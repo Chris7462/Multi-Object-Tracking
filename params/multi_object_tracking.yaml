@@ -5,5 +5,5 @@
     max_frame: 837
     camera_folder: "image_02"
     lidar_folder: "velodyne"
-    gps_folder: "oxts"
+    oxts_folder: "oxts"
     label_folder: "label_02"
