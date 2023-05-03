@@ -20,7 +20,6 @@ class MultiObjectTracking: public rclcpp::Node
     ~MultiObjectTracking() = default;
 
     Param param;
-    Trac
   private:
     rclcpp::Subscription<tracking_msgs::msg::DetectedObjectList>::SharedPtr detect_subscription_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr img_publisher_;

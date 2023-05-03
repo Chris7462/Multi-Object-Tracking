@@ -3,7 +3,7 @@
 #include <fstream>
 #include <string>
 #include <iostream>
-#include <stdlib.h>
+#include <cstdlib>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 
@@ -54,18 +54,23 @@ class Param
       //pinteract(2,1) = 0.15;
     };
 
-    Param operator=(Param& pcopy) {
-      this->pstate_v = pcopy.pstate_v;
-      this->pmea_v = pcopy.pmea_v;
-      this->pIou_thresh = pcopy.pIou_thresh;
-      this->pg_sigma = pcopy.pg_sigma;
-      this->pdist_thresh = pcopy.pdist_thresh;
-      this->pmodel = pcopy.pmodel;
-      this->pP = pcopy.pP;
-      this->pinteract = pcopy.pinteract;
-      this->pQ = pcopy.pQ;
-      this->pR = pcopy.pR;
-      this->pd = pcopy.pd;
+    Param& operator=(const Param& pcopy) {
+      if (this == &pcopy) {
+        return *this;
+      } else {
+        pstate_v = pcopy.pstate_v;
+        pmea_v = pcopy.pmea_v;
+        pIou_thresh = pcopy.pIou_thresh;
+        pg_sigma = pcopy.pg_sigma;
+        pdist_thresh = pcopy.pdist_thresh;
+        pmodel = pcopy.pmodel;
+        pP = pcopy.pP;
+        pinteract = pcopy.pinteract;
+        pQ = pcopy.pQ;
+        pR = pcopy.pR;
+        pd = pcopy.pd;
+        return *this;
+      }
     }
 
     float pd = 1.0;

@@ -16,11 +16,13 @@ find_package(pcl_conversions REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
 find_package(tracking_msgs REQUIRED)
 
 find_package(OpenCV REQUIRED COMPONENTS highgui)
 find_package(PCL REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 add_executable(kitti_publisher_node
   src/kitti_publisher_node.cpp
@@ -61,12 +63,15 @@ add_executable(multi_object_tracking_node
 
 ament_target_dependencies(multi_object_tracking_node
   rclcpp
+  sensor_msgs
+  visualization_msgs
   tracking_msgs
 )
 
 target_include_directories(multi_object_tracking_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
+  $<INSTALL_INTERFACE:include>
+  ${EIGEN3_INCLUDE_DIR})
 
 target_compile_features(multi_object_tracking_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
