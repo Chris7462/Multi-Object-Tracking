@@ -17,13 +17,13 @@
 
 struct Detect
 {
-  int classname = 0;
-  float score;//detection score
+  std::string classname;
+  float score; //detection score
   float z;
   float yaw;
-  Eigen::VectorXd position;//x,y
-  std::vector<float> box;//3D box in lidar h、w、l
-  std::vector<float> box2D;//2D box in camera left top point and right down point
+  Eigen::VectorXd position; //x,y
+  std::vector<float> box; //3D box in lidar h、w、l
+  std::vector<float> box2D; //2D box in camera left top point and right down point
   cv::RotatedRect rotbox;
 };
 

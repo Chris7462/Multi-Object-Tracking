@@ -51,31 +51,33 @@ link_directories(${PCL_LIBRARY_DIRS})
 
 target_link_libraries(kitti_publisher_node
   ${OpenCV_LIBS}
-  ${PCL_LIBRARIES}
-)
+  ${PCL_LIBRARIES})
 
 target_compile_features(kitti_publisher_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
 add_executable(multi_object_tracking_node
   src/multi_object_tracking_node.cpp
-  src/multi_object_tracking.cpp
-)
+  src/multi_object_tracking.cpp)
 
 ament_target_dependencies(multi_object_tracking_node
   rclcpp
+  cv_bridge
+  pcl_conversions
+  tf2
   sensor_msgs
   visualization_msgs
-  tracking_msgs
-)
+  tracking_msgs)
 
 target_include_directories(multi_object_tracking_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
   ${EIGEN3_INCLUDE_DIR}
-  ${OpenCV_INCLUDE_DIRS})
+  ${OpenCV_INCLUDE_DIRS}
+  ${PCL_INCLUDE_DIRS})
 
 target_link_libraries(multi_object_tracking_node
-  ${OpenCV_LIBS})
+  ${OpenCV_LIBS}
+  ${PCL_LIBRARIES})
 
 target_compile_features(multi_object_tracking_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
