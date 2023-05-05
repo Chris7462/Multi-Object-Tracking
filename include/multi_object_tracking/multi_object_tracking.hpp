@@ -66,6 +66,7 @@ class MultiObjectTracking: public rclcpp::Node
     double preheading_;
     double prex_;
     double prey_;
+    cv::Mat images_;
 
     //cv::RNG rng;
 
@@ -79,9 +80,12 @@ class MultiObjectTracking: public rclcpp::Node
     pcl::PointCloud<pcl::PointXYZI> pc_;
 
     bool init_;
+    float time_;
 
     cv::Point cloud2camera(const Eigen::Vector3d& input);
     Eigen::Vector3d camera2cloud(const Eigen::Vector3d& input);
 
     void draw3dbox(Detect &det, cv::Mat& image, std::vector<int>& color);
+
+    int64_t gtm();
 };

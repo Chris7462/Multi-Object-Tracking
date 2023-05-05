@@ -525,7 +525,7 @@ Tracker::Matrices Tracker::generate_hypothesis(const cv::Mat& _q)
         } //if q(i, j) == 1
       } //j
     } //i
-  } 
+  }
   /////////////////////////////////////////////////////////////////////////////////
   Matrices association_matrices(hyp_num + 1);
   std::copy(tmp_association_matrices.begin(), tmp_association_matrices.begin() + hyp_num + 1,

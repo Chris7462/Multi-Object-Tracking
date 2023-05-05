@@ -1,4 +1,5 @@
 #include <cmath>
+#include <ctime>
 
 // ros header
 #include <tf2/LinearMath/Quaternion.h>
@@ -16,9 +17,9 @@ MultiObjectTracking::MultiObjectTracking()
     rotZorigin_{Eigen::Matrix3d::Zero()}, porigin_{Eigen::Isometry3d::Identity()},
     oriheading_{0.0}, orix_{0.0}, oriy_{0.0},
     rotZpre_{Eigen::Matrix3d::Zero()}, ppre_{Eigen::Isometry3d::Identity()},
-    preheading_{0.0}, prex_{0.0}, prey_{0.0}, totaltime_{0.0},
-    latitude_{0.0}, longitude_{0.0}, heading_{0.0},
-    image_ptr_{nullptr}, pc_{}, init_{false}
+    preheading_{0.0}, prex_{0.0}, prey_{0.0}, images_{cv::Mat::zeros(608,608, CV_8UC3)},
+    totaltime_{0.0}, latitude_{0.0}, longitude_{0.0}, heading_{0.0},
+    image_ptr_{nullptr}, pc_{}, init_{false}, time_{0.1f}
 {
   gps_subscriber_ = create_subscription<sensor_msgs::msg::NavSatFix>(
     "gps/fix", 10, std::bind(&MultiObjectTracking::gps_callback, this, std::placeholders::_1));
@@ -63,6 +64,7 @@ void MultiObjectTracking::imu_callback(const sensor_msgs::msg::Imu::SharedPtr im
 
 void MultiObjectTracking::img_callback(const sensor_msgs::msg::Image::SharedPtr img_msg)
 {
+  RCLCPP_INFO(get_logger(), "In the image callback");
   try {
     image_ptr_ = cv_bridge::toCvCopy(img_msg, sensor_msgs::image_encodings::BGR8);
   } catch (cv_bridge::Exception& e) {
@@ -78,6 +80,7 @@ void MultiObjectTracking::pc_callback(const sensor_msgs::msg::PointCloud2::Share
 
 void MultiObjectTracking::det_callback(const tracking_msgs::msg::DetectedObjectList::SharedPtr det_msg)
 {
+  RCLCPP_INFO(get_logger(), "In the detection callback");
   visualization_msgs::msg::MarkerArray marker_array;
   visualization_msgs::msg::Marker bbox_marker;
   bbox_marker.header.frame_id = "global_init_frame";
@@ -162,39 +165,59 @@ void MultiObjectTracking::det_callback(const tracking_msgs::msg::DetectedObjectL
     Inputdets.push_back(det);
   }
 
+  //RCLCPP_INFO(get_logger(), "I'm here!");
+
   std::vector<int> color = {0,255,0};
   for (auto& det : Inputdets) {
-    draw3dbox(det, image_ptr_->image, color);
+    if (image_ptr_ == nullptr) {
+      RCLCPP_INFO(get_logger(), "NULL ptr!");
+    } else {
+      draw3dbox(det, image_ptr_->image, color);
+    }
 
     std::cout<<"input: "<< det.position(0)<<" "<<det.position(1)<<" "<<det.z<<" "<<det.box[0]<<" "<<det.box[1]<<" "<<det.box[2]<<std::endl;
-    //Yi-Chen is here.
+
+    Eigen::VectorXd v(2,1);
+    v(1) = det.position(0); //x in kitti lidar
+    v(0) = -det.position(1); //y in kitti lidar
+    if (init_) {
+      Eigen::Vector3d p_0(v(0), v(1), 0);
+      Eigen::Vector3d p_1;
+      p_1 = translate2origin * p_0;
+      v(0) = p_1(0);
+      v(1) = p_1(1);
+    }
+
+    det.position(0) = v(0);
+    det.position(1) = v(1);
+
+    det.rotbox = cv::RotatedRect(
+      cv::Point2f((v(0)+25)*608/50, v(1)*608/50),
+      cv::Size2f(det.box[1]*608/50, det.box[2]*608/50), det.yaw);
+
+    cv::RotatedRect detshow = cv::RotatedRect(
+      cv::Point2f((v(0)+25)*608/50, v(1)*608/50),
+      cv::Size2f(det.box[1]*608/50, det.box[2]*608/50), det.yaw);
+
+    cv::Point2f vertices[4];
+    detshow.points(vertices);
+    for (int j = 0; j < 4; ++j) {
+      cv::line(images_, vertices[j], vertices[(j+1)%4], cv::Scalar(0,0,255), 1);
+    }
   }
+  //if (image_ptr_ != nullptr) {
+  //  cv::imshow("image", image_ptr_->image);
+  //  cv::waitKey(3);
+  //}
 
-// Eigen::VectorXd v(2,1);
-// v(1)   = Inputdets[frame][i].position(0);//x in kitti lidar
-// v(0)   = -Inputdets[frame][i].position(1);//y in kitti lidar
-// if(frame!=0){
-// 	Eigen::Vector3d p_0(v(0), v(1), 0);
-// 	Eigen::Vector3d p_1;
-// 	p_1 = translate2origion * p_0;
-// 	v(0) = p_1(0);
-// 	v(1) = p_1(1);
-// }
+  std::vector<Eigen::VectorXd> result;
+  int64_t tm0 = gtm();
+  tracker.track(Inputdets, time_, result);
+  int64_t tm1 = gtm();
+  RCLCPP_INFO(get_logger(), "Update cast time: %ld us\n", tm1-tm0);
 
-// Inputdets[frame][i].position(0) = v(0);
-// Inputdets[frame][i].position(1) = v(1);
-
-// Inputdets[frame][i].rotbox = cv::RotatedRect(cv::Point2f((v(0)+25)*608/50, v(1)*608/50), 
-// 				cv::Size2f(Inputdets[frame][i].box[1]*608/50, Inputdets[frame][i].box[2]*608/50), Inputdets[frame][i].yaw);				     
-
-// cv::RotatedRect detshow = cv::RotatedRect(cv::Point2f((v(0)+25)*608/50, v(1)*608/50), 
-// 				cv::Size2f(Inputdets[frame][i].box[1]*608/50, Inputdets[frame][i].box[2]*608/50), Inputdets[frame][i].yaw);
-// cv::Point2f vertices[4];
-// detshow.points(vertices);
-//   		for (int j = 0; j < 4; j++)
-//       		cv::line(images, vertices[j], vertices[(j+1)%4], cv::Scalar(0,0,255), 1);
-//}
-
+  double x = tm1-tm0;
+  totaltime_ += x;
 }
 
 cv::Point MultiObjectTracking::cloud2camera(const Eigen::Vector3d& input)
@@ -202,17 +225,34 @@ cv::Point MultiObjectTracking::cloud2camera(const Eigen::Vector3d& input)
   Eigen::Matrix4d RT_velo_to_cam;
   Eigen::Matrix4d R_rect;
   Eigen::MatrixXd project_matrix(3,4);
-  RT_velo_to_cam << 7.49916597e-03, -9.99971248e-01, -8.65110297e-04, -6.71807577e-03,
-                    1.18652889e-02,  9.54520517e-04, -9.99910318e-01, -7.33152811e-02,
-                    9.99882833e-01,  7.49141178e-03,  1.18719929e-02, -2.78557062e-01,
-                                 0,               0,               0,               1;
-  R_rect <<  0.99992475, 0.00975976, -0.00734152, 0,
-            -0.0097913,  0.99994262, -0.00430371, 0,
-             0.00729911, 0.0043753,   0.99996319, 0,
-                      0,          0,           0, 1;
-  project_matrix << 7.215377e+02, 0.000000e+00, 6.095593e+02, 4.485728e+01,
-                    0.000000e+00, 7.215377e+02, 1.728540e+02, 2.163791e-01,
-                    0.000000e+00, 0.000000e+00, 1.000000e+00, 2.745884e-03;
+//RT_velo_to_cam << 7.49916597e-03, -9.99971248e-01, -8.65110297e-04, -6.71807577e-03,
+//                  1.18652889e-02,  9.54520517e-04, -9.99910318e-01, -7.33152811e-02,
+//                  9.99882833e-01,  7.49141178e-03,  1.18719929e-02, -2.78557062e-01,
+//                               0,               0,               0,               1;
+//R_rect <<  0.99992475, 0.00975976, -0.00734152, 0,
+//          -0.0097913,  0.99994262, -0.00430371, 0,
+//           0.00729911, 0.0043753,   0.99996319, 0,
+//                    0,          0,           0, 1;
+//project_matrix << 7.215377e+02, 0.000000e+00, 6.095593e+02, 4.485728e+01,
+//                  0.000000e+00, 7.215377e+02, 1.728540e+02, 2.163791e-01,
+//                  0.000000e+00, 0.000000e+00, 1.000000e+00, 2.745884e-03;
+
+  RT_velo_to_cam <<  7.967514000000e-03, -9.999679000000e-01, -8.462264000000e-04, -1.377769000000e-02,
+                    -2.771053000000e-03,  8.241710000000e-04, -9.999958000000e-01, -5.542117000000e-02,
+                     9.999644000000e-01,  7.969825000000e-03, -2.764397000000e-03, -2.918589000000e-01,
+                     0.0,                 0.0,                 0.0,                 1.0;
+
+  R_rect <<  9.999454000000e-01, 7.259129000000e-03, -7.519551000000e-03, 0.0,
+            -7.292213000000e-03, 9.999638000000e-01, -4.381729000000e-03, 0.0,
+             7.487471000000e-03, 4.436324000000e-03,  9.999621000000e-01, 0.0,
+             0.0,                0.0,                 0.0,                1.0;
+
+  project_matrix << 7.188560000000e+02, 0.000000000000e+00, 6.071928000000e+02,  4.538225000000e+01,
+                    0.000000000000e+00, 7.188560000000e+02, 1.852157000000e+02, -1.130887000000e-01,
+                    0.000000000000e+00, 0.000000000000e+00, 1.000000000000e+00,  3.779761000000e-03;
+
+// Tr_imu_velo 9.999976000000e-01 7.553071000000e-04 -2.035826000000e-03 -8.086759000000e-01 -7.854027000000e-04 9.998898000000e-01 -1.482298000000e-02 3.195559000000e-01 2.024406000000e-03 1.482454000000e-02 9.998881000000e-01 -7.997231000000e-01
+
   Eigen::MatrixXd transform_matrix_ = project_matrix*R_rect*RT_velo_to_cam;
 
   Eigen::Vector4d point;
@@ -226,14 +266,23 @@ Eigen::Vector3d MultiObjectTracking::camera2cloud(const Eigen::Vector3d& input)
 {
   Eigen::Matrix4d RT_velo_to_cam;
   Eigen::Matrix4d R_rect;
-  RT_velo_to_cam << 7.49916597e-03, -9.99971248e-01, -8.65110297e-04, -6.71807577e-03,
-                    1.18652889e-02,  9.54520517e-04, -9.99910318e-01, -7.33152811e-02,
-                    9.99882833e-01,  7.49141178e-03,  1.18719929e-02, -2.78557062e-01,
-                                 0,               0,               0,               1;
-  R_rect << 0.99992475, 0.00975976, -0.00734152, 0,
-           -0.0097913, 0.99994262, -0.00430371, 0,
-            0.00729911, 0.00437530,  0.99996319, 0,
-                     0,          0,           0, 1;
+//RT_velo_to_cam << 7.49916597e-03, -9.99971248e-01, -8.65110297e-04, -6.71807577e-03,
+//                  1.18652889e-02,  9.54520517e-04, -9.99910318e-01, -7.33152811e-02,
+//                  9.99882833e-01,  7.49141178e-03,  1.18719929e-02, -2.78557062e-01,
+//                               0,               0,               0,               1;
+//R_rect << 0.99992475, 0.00975976, -0.00734152, 0,
+//         -0.0097913, 0.99994262, -0.00430371, 0,
+//          0.00729911, 0.00437530,  0.99996319, 0,
+//                   0,          0,           0, 1;
+
+  RT_velo_to_cam <<  7.967514000000e-03, -9.999679000000e-01, -8.462264000000e-04, -1.377769000000e-02,
+                    -2.771053000000e-03,  8.241710000000e-04, -9.999958000000e-01, -5.542117000000e-02,
+                     9.999644000000e-01,  7.969825000000e-03, -2.764397000000e-03, -2.918589000000e-01,
+                     0.0,                 0.0,                 0.0,                 1.0;
+  R_rect <<  9.999454000000e-01, 7.259129000000e-03, -7.519551000000e-03, 0.0,
+            -7.292213000000e-03, 9.999638000000e-01, -4.381729000000e-03, 0.0,
+             7.487471000000e-03, 4.436324000000e-03,  9.999621000000e-01, 0.0,
+             0.0,                0.0,                 0.0,                1.0;
 
   Eigen::Vector4d point;
   point << input(0), input(1), input(2), 1;
@@ -291,4 +340,12 @@ void MultiObjectTracking::draw3dbox(Detect &det, cv::Mat& image, std::vector<int
 	cv::line(image, imagepoint[1], imagepoint[4], cv::Scalar(226, 43, 138), 2, cv::LINE_AA);
 
 	imagepoint.clear();
+}
+
+int64_t MultiObjectTracking::gtm() {
+	struct timeval tm;
+	gettimeofday(&tm, 0);
+	// return ms
+	int64_t re = (((int64_t) tm.tv_sec) * 1000 * 1000 + tm.tv_usec);
+	return re;
 }

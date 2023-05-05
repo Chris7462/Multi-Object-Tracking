@@ -9,6 +9,7 @@
 #include <set>
 #include <unordered_map>
 
+#include <Eigen/Core>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
 

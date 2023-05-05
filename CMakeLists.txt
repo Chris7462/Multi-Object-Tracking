@@ -57,7 +57,11 @@ target_compile_features(kitti_publisher_node PUBLIC c_std_99 cxx_std_17)  # Requ
 
 add_executable(multi_object_tracking_node
   src/multi_object_tracking_node.cpp
-  src/multi_object_tracking.cpp)
+  src/multi_object_tracking.cpp
+  src/tracker.cpp
+  src/imm_ukf.cpp
+  src/hungarianAlg.cpp
+  src/ukf.cpp)
 
 ament_target_dependencies(multi_object_tracking_node
   rclcpp

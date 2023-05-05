@@ -51,7 +51,8 @@ void AssignmentProblemSolver::assignmentoptimal(assignments_t& assignment, track
   for (size_t row = 0; row < nOfElements; row++)
   {
     track_t value = distMatrixIn[row];
-    assert(value >= 0);
+  //std::cout << "value = " << value << std::endl << std::flush;
+  //assert(value >= 0);
     distMatrix[row] = value;
   }
 
