@@ -1,10 +1,12 @@
 #include <cmath>
 #include <ctime>
+#include <string>
 
 // ros header
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <std_msgs/msg/header.hpp>
 
 // local header
 #include "multi_object_tracking/track.hpp"
@@ -17,9 +19,10 @@ MultiObjectTracking::MultiObjectTracking()
     rotZorigin_{Eigen::Matrix3d::Zero()}, porigin_{Eigen::Isometry3d::Identity()},
     oriheading_{0.0}, orix_{0.0}, oriy_{0.0},
     rotZpre_{Eigen::Matrix3d::Zero()}, ppre_{Eigen::Isometry3d::Identity()},
-    preheading_{0.0}, prex_{0.0}, prey_{0.0}, images_{cv::Mat::zeros(608,608, CV_8UC3)},
-    totaltime_{0.0}, latitude_{0.0}, longitude_{0.0}, heading_{0.0},
-    image_ptr_{nullptr}, pc_{}, init_{false}, time_{0.1f}
+    preheading_{0.0}, prex_{0.0}, prey_{0.0},
+    rng_{12345}, time_{0.1f}, totaltime_{0.0}, latitude_{0.0}, longitude_{0.0}, heading_{0.0},
+    image_ptr_{nullptr}, init_{false}, curr_time_{get_clock()->now()}, prev_time_{curr_time_},
+    max_marker_size_{50}
 {
   gps_subscriber_ = create_subscription<sensor_msgs::msg::NavSatFix>(
     "gps/fix", 10, std::bind(&MultiObjectTracking::gps_callback, this, std::placeholders::_1));
@@ -30,14 +33,10 @@ MultiObjectTracking::MultiObjectTracking()
   img_subscriber_ = create_subscription<sensor_msgs::msg::Image>(
     "camera/image_raw", 10, std::bind(&MultiObjectTracking::img_callback, this, std::placeholders::_1));
 
-  pc_subscriber_ = create_subscription<sensor_msgs::msg::PointCloud2>(
-    "point_cloud", 10, std::bind(&MultiObjectTracking::pc_callback, this, std::placeholders::_1));
-
   detect_subscriber_ = create_subscription<tracking_msgs::msg::DetectedObjectList>(
     "detected_object_list", 10, std::bind(&MultiObjectTracking::det_callback, this, std::placeholders::_1));
 
   img_publisher_ = create_publisher<sensor_msgs::msg::Image>("mot/image", 10);
-  pc_publisher_ = create_publisher<sensor_msgs::msg::PointCloud2>("mot/point_cloud", 10);
   marker_publisher_ = create_publisher<visualization_msgs::msg::MarkerArray>("mot/box", 10);
   textmarker_publisher_= create_publisher<visualization_msgs::msg::MarkerArray>("mot/id", 10);
 };
@@ -73,18 +72,14 @@ void MultiObjectTracking::img_callback(const sensor_msgs::msg::Image::SharedPtr 
   }
 }
 
-void MultiObjectTracking::pc_callback(const sensor_msgs::msg::PointCloud2::SharedPtr pc_msg)
-{
-  pcl::fromROSMsg(*pc_msg, pc_);
-}
-
 void MultiObjectTracking::det_callback(const tracking_msgs::msg::DetectedObjectList::SharedPtr det_msg)
 {
+  curr_time_ = get_clock()->now();
   RCLCPP_INFO(get_logger(), "In the detection callback");
   visualization_msgs::msg::MarkerArray marker_array;
   visualization_msgs::msg::Marker bbox_marker;
-  bbox_marker.header.frame_id = "global_init_frame";
-  bbox_marker.header.stamp = get_clock()->now();
+  bbox_marker.header.frame_id = "lidar_link";
+  bbox_marker.header.stamp = curr_time_;
   bbox_marker.ns = "";
   bbox_marker.lifetime = rclcpp::Duration(0, 5e8);
   bbox_marker.frame_locked = true;
@@ -93,8 +88,8 @@ void MultiObjectTracking::det_callback(const tracking_msgs::msg::DetectedObjectL
 
   visualization_msgs::msg::MarkerArray text_marker_array;
   visualization_msgs::msg::Marker text_marker;
-  text_marker.header.frame_id = "global_init_frame";
-  text_marker.header.stamp = get_clock()->now();
+  text_marker.header.frame_id = "lidar_link";
+  text_marker.header.stamp = curr_time_;
   text_marker.ns = "";
   text_marker.lifetime = rclcpp::Duration(0, 5e8);
   text_marker.frame_locked = true;
@@ -111,8 +106,6 @@ void MultiObjectTracking::det_callback(const tracking_msgs::msg::DetectedObjectL
 
   Eigen::Isometry3d translate2origin;
   Eigen::Isometry3d origin2translate;
-
-  double twosub = 0.0;
 
   if (!init_) {
     orix_ = UTME;
@@ -138,7 +131,6 @@ void MultiObjectTracking::det_callback(const tracking_msgs::msg::DetectedObjectL
     p2.translation() = Eigen::Vector3d(UTME, UTMN, 0);
     translate2origin = porigin_.inverse() * p2;
     origin2translate = p2.inverse() * porigin_;
-    twosub = heading_ - oriheading_;
   }
 
   std::vector<Detect> Inputdets;
@@ -165,16 +157,8 @@ void MultiObjectTracking::det_callback(const tracking_msgs::msg::DetectedObjectL
     Inputdets.push_back(det);
   }
 
-  //RCLCPP_INFO(get_logger(), "I'm here!");
-
   std::vector<int> color = {0,255,0};
   for (auto& det : Inputdets) {
-    if (image_ptr_ == nullptr) {
-      RCLCPP_INFO(get_logger(), "NULL ptr!");
-    } else {
-      draw3dbox(det, image_ptr_->image, color);
-    }
-
     std::cout<<"input: "<< det.position(0)<<" "<<det.position(1)<<" "<<det.z<<" "<<det.box[0]<<" "<<det.box[1]<<" "<<det.box[2]<<std::endl;
 
     Eigen::VectorXd v(2,1);
@@ -194,21 +178,7 @@ void MultiObjectTracking::det_callback(const tracking_msgs::msg::DetectedObjectL
     det.rotbox = cv::RotatedRect(
       cv::Point2f((v(0)+25)*608/50, v(1)*608/50),
       cv::Size2f(det.box[1]*608/50, det.box[2]*608/50), det.yaw);
-
-    cv::RotatedRect detshow = cv::RotatedRect(
-      cv::Point2f((v(0)+25)*608/50, v(1)*608/50),
-      cv::Size2f(det.box[1]*608/50, det.box[2]*608/50), det.yaw);
-
-    cv::Point2f vertices[4];
-    detshow.points(vertices);
-    for (int j = 0; j < 4; ++j) {
-      cv::line(images_, vertices[j], vertices[(j+1)%4], cv::Scalar(0,0,255), 1);
-    }
   }
-  //if (image_ptr_ != nullptr) {
-  //  cv::imshow("image", image_ptr_->image);
-  //  cv::waitKey(3);
-  //}
 
   std::vector<Eigen::VectorXd> result;
   int64_t tm0 = gtm();
@@ -218,6 +188,115 @@ void MultiObjectTracking::det_callback(const tracking_msgs::msg::DetectedObjectL
 
   double x = tm1-tm0;
   totaltime_ += x;
+
+  int marker_id = 0;
+  for (size_t i = 0; i < result.size(); ++i) {
+    Eigen::VectorXd r = result.at(i);
+    if (init_) {
+      Eigen::Vector3d p_0(r(1), r(2), 0);
+      Eigen::Vector3d p_1;
+      p_1 = origin2translate * p_0;
+      r(1) = p_1(0);
+      r(2) = p_1(1);
+    }
+
+    Detect det;
+    det.box2D.resize(4);
+    det.box.resize(3);
+    det.box[0] = r(9);//h
+    det.box[1] = r(8);//w
+    det.box[2] = r(7);//l
+    det.z = r(10);
+    det.yaw = r(6);
+    det.position = Eigen::VectorXd(2);
+    det.position << r(2),-r(1);
+    std::cout<<"det: "<<det.position(0)<<" "<<det.position(1)<<" "<<det.z<<" "
+             <<det.box[0]<<" "<<det.box[1]<<" "<<det.box[2]<<std::endl;
+
+    if (!idcolor.count(int(r(0)))){
+      int red = rng_.uniform(0, 255);
+      int green = rng_.uniform(0, 255);
+      int blue = rng_.uniform(0, 255);
+      idcolor[int(r(0))] = {red,green,blue};
+    }
+
+    Eigen::Vector3f eulerAngle(-det.yaw, 0.0, 0.0);
+    Eigen::AngleAxisf rollAngle(Eigen::AngleAxisf(eulerAngle(2), Eigen::Vector3f::UnitX()));
+    Eigen::AngleAxisf pitchAngle(Eigen::AngleAxisf(eulerAngle(1), Eigen::Vector3f::UnitY()));
+    Eigen::AngleAxisf yawAngle(Eigen::AngleAxisf(eulerAngle(0), Eigen::Vector3f::UnitZ()));
+    const Eigen::Quaternionf bboxQ1(yawAngle * pitchAngle * rollAngle);
+    Eigen::Vector4f q = bboxQ1.coeffs();
+
+    bbox_marker.id = marker_id;
+    bbox_marker.pose.position.x = det.position(0);
+    bbox_marker.pose.position.y = det.position(1);
+    bbox_marker.pose.position.z = det.z+ det.box[0]/2;
+    bbox_marker.pose.orientation.x = q[0];
+    bbox_marker.pose.orientation.y = q[1];
+    bbox_marker.pose.orientation.z = q[2];
+    bbox_marker.pose.orientation.w = q[3];
+    bbox_marker.scale.x = det.box[1];
+    bbox_marker.scale.y = det.box[2];
+    bbox_marker.scale.z = det.box[0];
+    bbox_marker.color.r = float(idcolor[int(r(0))][0])/255;
+    bbox_marker.color.g = float(idcolor[int(r(0))][1])/255;
+    bbox_marker.color.b = float(idcolor[int(r(0))][2])/255;
+    bbox_marker.color.a = 0.8;
+    marker_array.markers.push_back(bbox_marker);
+
+    text_marker.id = marker_id;
+    text_marker.pose.position.x = det.position(0);
+    text_marker.pose.position.y = det.position(1);
+    text_marker.pose.position.z = det.z + det.box[0]/2 + 1;
+    text_marker.pose.orientation.x = 0;
+    text_marker.pose.orientation.y = 0;
+    text_marker.pose.orientation.z = 0;
+    text_marker.pose.orientation.w = 1;
+    text_marker.scale.x = 0.2;
+    text_marker.scale.y = 0;
+    text_marker.scale.z = 1;
+    text_marker.text = "ID: " + std::to_string(int(r(0)));
+    text_marker_array.markers.push_back(text_marker);
+    ++marker_id;
+  }
+
+  if (marker_array.markers.size() > max_marker_size_) {
+    max_marker_size_ = marker_array.markers.size();
+  }
+
+  for (size_t i = marker_id; i < max_marker_size_; ++i) {
+    bbox_marker.id = i;
+    bbox_marker.color.a = 0;
+    bbox_marker.pose.position.x = 0;
+    bbox_marker.pose.position.y = 0;
+    bbox_marker.pose.position.z = 0;
+    bbox_marker.scale.x = 0;
+    bbox_marker.scale.y = 0;
+    bbox_marker.scale.z = 0;
+    marker_array.markers.push_back(bbox_marker);
+
+    text_marker.id = i;
+    text_marker.color.a = 0;
+    text_marker.pose.position.x = 0;
+    text_marker.pose.position.y = 0;
+    text_marker.pose.position.z = 0;
+    text_marker.scale.x = 0;
+    text_marker.scale.y = 0;
+    text_marker.scale.z = 0;
+    text_marker_array.markers.push_back(text_marker);
+
+    ++marker_id;
+  }
+
+  marker_publisher_->publish(marker_array);
+  textmarker_publisher_->publish(text_marker_array);
+
+
+  RCLCPP_INFO_STREAM(get_logger(), "Curr time = " << curr_time_.nanoseconds());
+  RCLCPP_INFO_STREAM(get_logger(), "Prev time = " << prev_time_.nanoseconds());
+
+  time_ += static_cast<float>((curr_time_ - prev_time_).seconds());
+  prev_time_ = curr_time_;
 }
 
 cv::Point MultiObjectTracking::cloud2camera(const Eigen::Vector3d& input)
@@ -225,17 +304,6 @@ cv::Point MultiObjectTracking::cloud2camera(const Eigen::Vector3d& input)
   Eigen::Matrix4d RT_velo_to_cam;
   Eigen::Matrix4d R_rect;
   Eigen::MatrixXd project_matrix(3,4);
-//RT_velo_to_cam << 7.49916597e-03, -9.99971248e-01, -8.65110297e-04, -6.71807577e-03,
-//                  1.18652889e-02,  9.54520517e-04, -9.99910318e-01, -7.33152811e-02,
-//                  9.99882833e-01,  7.49141178e-03,  1.18719929e-02, -2.78557062e-01,
-//                               0,               0,               0,               1;
-//R_rect <<  0.99992475, 0.00975976, -0.00734152, 0,
-//          -0.0097913,  0.99994262, -0.00430371, 0,
-//           0.00729911, 0.0043753,   0.99996319, 0,
-//                    0,          0,           0, 1;
-//project_matrix << 7.215377e+02, 0.000000e+00, 6.095593e+02, 4.485728e+01,
-//                  0.000000e+00, 7.215377e+02, 1.728540e+02, 2.163791e-01,
-//                  0.000000e+00, 0.000000e+00, 1.000000e+00, 2.745884e-03;
 
   RT_velo_to_cam <<  7.967514000000e-03, -9.999679000000e-01, -8.462264000000e-04, -1.377769000000e-02,
                     -2.771053000000e-03,  8.241710000000e-04, -9.999958000000e-01, -5.542117000000e-02,
@@ -251,8 +319,6 @@ cv::Point MultiObjectTracking::cloud2camera(const Eigen::Vector3d& input)
                     0.000000000000e+00, 7.188560000000e+02, 1.852157000000e+02, -1.130887000000e-01,
                     0.000000000000e+00, 0.000000000000e+00, 1.000000000000e+00,  3.779761000000e-03;
 
-// Tr_imu_velo 9.999976000000e-01 7.553071000000e-04 -2.035826000000e-03 -8.086759000000e-01 -7.854027000000e-04 9.998898000000e-01 -1.482298000000e-02 3.195559000000e-01 2.024406000000e-03 1.482454000000e-02 9.998881000000e-01 -7.997231000000e-01
-
   Eigen::MatrixXd transform_matrix_ = project_matrix*R_rect*RT_velo_to_cam;
 
   Eigen::Vector4d point;
@@ -266,14 +332,6 @@ Eigen::Vector3d MultiObjectTracking::camera2cloud(const Eigen::Vector3d& input)
 {
   Eigen::Matrix4d RT_velo_to_cam;
   Eigen::Matrix4d R_rect;
-//RT_velo_to_cam << 7.49916597e-03, -9.99971248e-01, -8.65110297e-04, -6.71807577e-03,
-//                  1.18652889e-02,  9.54520517e-04, -9.99910318e-01, -7.33152811e-02,
-//                  9.99882833e-01,  7.49141178e-03,  1.18719929e-02, -2.78557062e-01,
-//                               0,               0,               0,               1;
-//R_rect << 0.99992475, 0.00975976, -0.00734152, 0,
-//         -0.0097913, 0.99994262, -0.00430371, 0,
-//          0.00729911, 0.00437530,  0.99996319, 0,
-//                   0,          0,           0, 1;
 
   RT_velo_to_cam <<  7.967514000000e-03, -9.999679000000e-01, -8.462264000000e-04, -1.377769000000e-02,
                     -2.771053000000e-03,  8.241710000000e-04, -9.999958000000e-01, -5.542117000000e-02,

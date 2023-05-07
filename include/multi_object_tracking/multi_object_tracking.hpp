@@ -1,5 +1,8 @@
 #pragma once
 
+// cpp header
+#include <unordered_map>
+
 // OpenCV
 #include <opencv2/core.hpp>
 
@@ -42,14 +45,12 @@ class MultiObjectTracking: public rclcpp::Node
     rclcpp::Subscription<tracking_msgs::msg::DetectedObjectList>::SharedPtr detect_subscriber_;
 
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr img_publisher_;
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pc_publisher_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_publisher_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr textmarker_publisher_;
 
     void gps_callback(const sensor_msgs::msg::NavSatFix::SharedPtr gps_msg);
     void imu_callback(const sensor_msgs::msg::Imu::SharedPtr imu_msg);
     void img_callback(const sensor_msgs::msg::Image::SharedPtr img_msg);
-    void pc_callback(const sensor_msgs::msg::PointCloud2::SharedPtr pc_msg);
     void det_callback(const tracking_msgs::msg::DetectedObjectList::SharedPtr det_msg);
 
     Param param;
@@ -66,10 +67,10 @@ class MultiObjectTracking: public rclcpp::Node
     double preheading_;
     double prex_;
     double prey_;
-    cv::Mat images_;
 
-    //cv::RNG rng;
+    cv::RNG rng_;
 
+    float time_;
     double totaltime_;
 
     double latitude_;
@@ -80,7 +81,8 @@ class MultiObjectTracking: public rclcpp::Node
     pcl::PointCloud<pcl::PointXYZI> pc_;
 
     bool init_;
-    float time_;
+    rclcpp::Time curr_time_;
+    rclcpp::Time prev_time_;
 
     cv::Point cloud2camera(const Eigen::Vector3d& input);
     Eigen::Vector3d camera2cloud(const Eigen::Vector3d& input);
@@ -88,4 +90,7 @@ class MultiObjectTracking: public rclcpp::Node
     void draw3dbox(Detect &det, cv::Mat& image, std::vector<int>& color);
 
     int64_t gtm();
+    std::unordered_map<int, std::vector<int>> idcolor;
+
+    size_t max_marker_size_;
 };

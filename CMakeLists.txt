@@ -69,6 +69,7 @@ ament_target_dependencies(multi_object_tracking_node
   pcl_conversions
   tf2
   sensor_msgs
+  std_msgs
   visualization_msgs
   tracking_msgs)
 
