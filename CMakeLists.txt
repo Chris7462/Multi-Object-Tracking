@@ -92,6 +92,10 @@ install(TARGETS kitti_publisher_node multi_object_tracking_node
 install(DIRECTORY params
   DESTINATION share/${PROJECT_NAME})
 
+install(DIRECTORY rviz
+  DESTINATION share/${PROJECT_NAME}
+)
+
 install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME})
 

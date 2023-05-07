@@ -6,11 +6,8 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /MarkerArray1/Status1
-        - /MarkerArray1/Namespaces1
-        - /MarkerArray2/Status1
-        - /MarkerArray2/Topic1
-        - /MarkerArray2/Namespaces1
+        - /BoundingBox1/Namespaces1
+        - /BoxID1
       Splitter Ratio: 0.5
     Tree Height: 357
   - Class: rviz_common/Selection
@@ -102,7 +99,7 @@ Visualization Manager:
       Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
-      Name: MarkerArray
+      Name: BoundingBox
       Namespaces:
         "": true
       Topic:
@@ -114,7 +111,7 @@ Visualization Manager:
       Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
-      Name: MarkerArray
+      Name: BoxID
       Namespaces:
         "": true
       Topic:
@@ -126,9 +123,9 @@ Visualization Manager:
       Value: true
   Enabled: true
   Global Options:
-    Background Color: 48; 48; 48
+    Background Color: 75; 75; 75
     Fixed Frame: lidar_link
-    Frame Rate: 30
+    Frame Rate: 29
   Name: root
   Tools:
     - Class: rviz_default_plugins/Interact
@@ -170,25 +167,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 24.233489990234375
+      Distance: 25.998783111572266
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
+        X: 1.469167947769165
+        Y: -1.1653211116790771
+        Z: 5.193005561828613
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.4903981685638428
+      Pitch: 0.125398188829422
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.945399522781372
+      Yaw: 3.0754027366638184
     Saved: ~
 Window Geometry:
   Displays:

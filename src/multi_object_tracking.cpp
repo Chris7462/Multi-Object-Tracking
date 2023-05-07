@@ -175,9 +175,9 @@ void MultiObjectTracking::det_callback(const tracking_msgs::msg::DetectedObjectL
     det.position(0) = v(0);
     det.position(1) = v(1);
 
-    det.rotbox = cv::RotatedRect(
-      cv::Point2f((v(0)+25)*608/50, v(1)*608/50),
-      cv::Size2f(det.box[1]*608/50, det.box[2]*608/50), det.yaw);
+  //det.rotbox = cv::RotatedRect(
+  //  cv::Point2f((v(0)+25)*608/50, v(1)*608/50),
+  //  cv::Size2f(det.box[1]*608/50, det.box[2]*608/50), det.yaw);
   }
 
   std::vector<Eigen::VectorXd> result;
@@ -284,13 +284,11 @@ void MultiObjectTracking::det_callback(const tracking_msgs::msg::DetectedObjectL
     text_marker.scale.y = 0;
     text_marker.scale.z = 0;
     text_marker_array.markers.push_back(text_marker);
-
     ++marker_id;
   }
 
   marker_publisher_->publish(marker_array);
   textmarker_publisher_->publish(text_marker_array);
-
 
   RCLCPP_INFO_STREAM(get_logger(), "Curr time = " << curr_time_.nanoseconds());
   RCLCPP_INFO_STREAM(get_logger(), "Prev time = " << prev_time_.nanoseconds());

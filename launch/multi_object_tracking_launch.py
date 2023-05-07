@@ -16,6 +16,21 @@ def generate_launch_description():
     parameters=[params]
   )
 
+  tracking_node = Node(
+    package="multi_object_tracking",
+    executable="multi_object_tracking_node",
+    name="multi_object_tracking_node"
+  )
+
+  rviz_node = Node(
+    package="rviz2",
+    executable="rviz2",
+    name="rviz2",
+    arguments=["-d", join(get_package_share_directory("multi_object_tracking"), "rviz/", "vis.rviz")]
+  )
+
   return LaunchDescription([
-    kitti_publisher_node
+    kitti_publisher_node,
+    tracking_node,
+    rviz_node
   ])

@@ -95,7 +95,7 @@ class IMM_UKF
 
   private:
 
-    int model_size = 0;
+    size_t model_size = 0;
     int n_x_ = 5;
     int n_z_ = 2;
 
