@@ -122,7 +122,7 @@ void UKF::Prediction(float ntime)
 
 
     if(model_ == 1){  //CV
-      float px_pre,py_pre,velo_pre,yaw_pre,yawd_pre,a_pre;
+      float px_pre,py_pre,velo_pre,yaw_pre;
       px_pre = px_k + velo_k * deltat * cos(yaw_k);
       py_pre = py_k + velo_k * deltat * sin(yaw_k);
 
@@ -137,7 +137,7 @@ void UKF::Prediction(float ntime)
       sigma_points_pre(5,i) = a_k;
 
     }else if(model_ == 2){ //CTRV
-      float px_pre,py_pre,velo_pre,yaw_pre,yawd_pre,a_pre;
+      float px_pre,py_pre,velo_pre,yaw_pre,yawd_pre;
       if (fabs(yawd_k) > 0.001) {
         px_pre = px_k + velo_k / yawd_k * (std::sin(yaw_k + yawd_k * deltat) - std::sin(yaw_k));
         py_pre = py_k + velo_k / yawd_k * (std::cos(yaw_k) - std::cos(yaw_k + yawd_k * deltat));
@@ -200,7 +200,7 @@ void UKF::Prediction(float ntime)
 
     P_ += Q_;
   }
-  catch(std::bad_alloc){
+  catch(std::bad_alloc&){
     std::cout<<"erro"<<std::endl;
     return;
   }
@@ -276,7 +276,7 @@ void UKF::Update( std::vector<Eigen::VectorXd>& Z, const Eigen::VectorXd& beta, 
 
   Eigen::MatrixXd P_temp = Eigen::MatrixXd(n_x_, n_x_);
   P_temp.fill(0.);
-  for(int i = 0; i < Z.size() + 1; ++i)
+  for(size_t i = 0; i < Z.size() + 1; ++i)
   {
     Eigen::VectorXd a = Eigen::VectorXd(n_x_);
     a.setZero();

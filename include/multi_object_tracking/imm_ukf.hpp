@@ -37,7 +37,7 @@ class IMM_UKF
           model_pro_ = Eigen::VectorXd(model_size);
           c_ = Eigen::VectorXd(model_size);
 
-          for (int i = 0; i < model_size; ++i) {
+          for (size_t i = 0; i < model_size; ++i) {
             model_pro_(i) = 1.0/(float)model_size;
           }
           interact_pro_ = Eigen::MatrixXd(model_size,model_size);

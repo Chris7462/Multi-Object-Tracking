@@ -213,8 +213,8 @@ void Tracker::track(const Detection& detections,float& time, std::vector<Eigen::
       std::vector<bool> missed_tracks(confirmed_tracks_.size(),true);
 
       clusterq(q, cltrack, cldet);
-      int clustersize = cltrack.size();
-      for(int i =0; i<clustersize; ++i){
+      size_t clustersize = cltrack.size();
+      for(size_t i =0; i<clustersize; ++i){
         int colsize = cltrack[i].size();
         int rowsize = cldet[i].size();
         //std::cout<<"###############q \n"<<q<<"\n"<<std::endl;
@@ -261,14 +261,14 @@ void Tracker::track(const Detection& detections,float& time, std::vector<Eigen::
           for(auto det : selectdets){
             Zv.push_back(det.position);
           }
-          track->Update(Zv, beta.col(b), beta(beta.rows() - 1, b), time);//TODO change the imm_ukf
+          track->Update(Zv, beta.col(b), beta(beta.rows() - 1, b));
           b++;
           tracks_.push_back(track);
           prun_tracks.push_back(track);
         }
       }
 
-      for(int i=0; i<confirmed_tracks_.size(); ++i){
+      for(size_t i=0; i<confirmed_tracks_.size(); ++i){
         if(missed_tracks[i]){
           confirmed_tracks_[i]->MarkMissed();
           tracks_.push_back(confirmed_tracks_[i]);
@@ -470,7 +470,7 @@ std::vector<bool> Tracker::analyze_tracks(const cv::Mat& _q){
   cv::Mat col_sum(cv::Size(m_q.cols, 1), _q.type(), cv::Scalar(0));
 
   std::vector<bool> not_associate(m_q.cols, true); //ALL TRACKS ARE ASSOCIATED
-  for(uint i = 0; i < m_q.rows; ++i){
+  for(int i = 0; i < m_q.rows; ++i){
     col_sum += m_q.row(i);
   }
   cv::Mat nonZero;
@@ -502,16 +502,16 @@ Tracker::Matrices Tracker::generate_hypothesis(const cv::Mat& _q)
   //Generating all the possible association matrices from the possible measurements
 
   if(validationIdx != 0){
-    for(uint i = 0; i < _q.rows; ++i){
-      for(uint j = 1; j < _q.cols; ++j){
+    for(int i = 0; i < _q.rows; ++i){
+      for(int j = 1; j < _q.cols; ++j){
         if(_q.at<int>(i, j)){
           tmp_association_matrices.at(hyp_num)(i, 0) = 0;
           tmp_association_matrices.at(hyp_num)(i, j) = 1;
           ++hyp_num;
-          if ( j == _q.cols - 1 ) continue;
-          for(uint l = 0; l < _q.rows; ++l){
+          if (j == _q.cols - 1 ) continue;
+          for(int l = 0; l < _q.rows; ++l){
             if(l != i){
-              for(uint m = j + 1; m < _q.cols; ++m) {// CHECK Q.COLS - 1
+              for(int m = j + 1; m < _q.cols; ++m) {// CHECK Q.COLS - 1
                 if(_q.at<int>(l, m)){
                   tmp_association_matrices.at(hyp_num)(i, 0) = 0;
                   tmp_association_matrices.at(hyp_num)(i, j) = 1;
@@ -848,7 +848,7 @@ void Tracker::manage_tracks(float& time){
     }
 
     cv::Mat notAssignedDet(cv::Size(assigmentsBin.cols, 1), CV_32SC1, cv::Scalar(0));
-    for(uint i = 0; i < assigmentsBin.rows; ++i){
+    for(int i = 0; i < assigmentsBin.rows; ++i){
       notAssignedDet += assigmentsBin.row(i);
     }
 
@@ -859,7 +859,7 @@ void Tracker::manage_tracks(float& time){
     cv::findNonZero(notAssignedDet, dets);
     prev_detections_.clear();
     for(uint i = 0; i < dets.total(); ++i){
-      const uint& idx = dets.at<cv::Point>(i).x;
+      //const uint& idx = dets.at<cv::Point>(i).x;
       prev_detections_.push_back(not_associated_.at(i));
     }
   }
@@ -932,13 +932,13 @@ void Tracker::pruning(Detection&  selected_detections,
     }
   }
 
-  for(int i=0; i<choosen.size(); ++i){
+  for(size_t i=0; i<choosen.size(); ++i){
     if(!choosen[i]){
       not_associated_.push_back(selected_detections[i]);
     }
   }
 
-  for(int i=0; i<trackchoosen.size(); ++i){
+  for(size_t i=0; i<trackchoosen.size(); ++i){
     if(!trackchoosen[i]){
       tracks_[i]->MarkMissed();
     }

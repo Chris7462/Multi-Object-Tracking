@@ -85,7 +85,7 @@ class Track
       imm_ukf_->PredictionZmerge(time);
     }
 
-    void Update(std::vector<Eigen::VectorXd>& det, const Eigen::VectorXd& beta, const float& last_beta, float& time)
+    void Update(std::vector<Eigen::VectorXd>& det, const Eigen::VectorXd& beta, const float& last_beta)
     {
       imm_ukf_->UpdateProbability(det, beta, last_beta);
       age_ = 0;

@@ -40,7 +40,7 @@ void IMM_UKF::InputInteract()
   for(size_t j=0; j<model_size; ++j){
     model_X_[j] = imm_ukf_[j].Get_state();
     model_P_[j] = imm_ukf_[j].Get_covariance();
-    for(int i=0; i<model_size; ++i){
+    for(size_t i=0; i<model_size; ++i){
       c_(j) += interact_pro_(i,j)*model_pro_(i);
     }
   }
